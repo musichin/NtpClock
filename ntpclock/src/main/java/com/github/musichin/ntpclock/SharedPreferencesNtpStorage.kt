@@ -7,7 +7,7 @@ import android.provider.Settings
 import androidx.annotation.RequiresApi
 
 @RequiresApi(Build.VERSION_CODES.N)
-class NtpSharedPreferencesStorage(
+class SharedPreferencesNtpStorage(
     private val context: Context,
     val name: String = "com.github.musichin.ntpclock"
 ) : NtpStorage() {

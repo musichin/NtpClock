@@ -9,9 +9,9 @@ object NtpClock {
 
     private val lock = Any()
 
-    private var stamp: NtpStamp? = null
-
     private var sync: NtpSync? = null
+
+    private var storage: NtpStorage = InMemoryNtpStorage()
 
     @JvmStatic
     fun sync(
@@ -19,21 +19,20 @@ object NtpClock {
         version: Int = 3,
         servers: Int = 4,
         samples: Int = 4,
-        storage: NtpStorage? = null,
         executor: (block: () -> Unit) -> Unit = { block -> block() },
         onDone: ((pool: String, samples: List<Int>, stamp: NtpStamp?) -> Unit)? = null,
         onChange: ((stamp: NtpStamp?) -> Unit)? = null,
         onReady: ((stamp: NtpStamp?) -> Unit)? = null
     ) {
         synchronized(lock) {
-            if (sync != null) throw IllegalStateException("Synchronization already in progress")
+            if (sync != null) throw IllegalStateException("Sync already in progress")
 
             var ready: (stamp: NtpStamp?) -> Unit = { stamp ->
                 onReady?.invoke(stamp)
             }
 
             val change: (stamp: NtpStamp?) -> Unit = { stamp ->
-                this@NtpClock.stamp = stamp
+                storage.set(stamp)
                 ready(stamp)
                 ready = {}
                 onChange?.invoke(stamp)
@@ -41,7 +40,7 @@ object NtpClock {
 
             val done: (List<Int>, stamp: NtpStamp?) -> Unit = { samples, stamp ->
                 change(stamp)
-                storage?.set(stamp)
+                sync = null
                 onDone?.invoke(pool, samples, stamp)
             }
 
@@ -58,13 +57,21 @@ object NtpClock {
     }
 
     @JvmStatic
-    fun stamp(): NtpStamp? = stamp ?: synchronized(lock) { stamp }
+    fun reset() {
+        synchronized(lock) {
+            if (sync != null) throw IllegalStateException("Sync")
+            storage.set(null)
+        }
+    }
 
     @JvmStatic
-    fun requireStamp(): NtpStamp = stamp ?: throwNotSynced()
+    fun stamp(): NtpStamp? = storage.get() ?: synchronized(lock) { storage.get() }
 
     @JvmStatic
-    fun now(): Long? = stamp?.now()
+    fun requireStamp(): NtpStamp = stamp() ?: throwNotSynced()
+
+    @JvmStatic
+    fun now(): Long? = stamp()?.now()
 
     @JvmStatic
     fun requireNow(): Long = now() ?: throwNotSynced()
