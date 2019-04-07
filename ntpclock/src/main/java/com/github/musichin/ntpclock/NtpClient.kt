@@ -1,17 +1,13 @@
 package com.github.musichin.ntpclock
 
 import android.os.SystemClock
-import android.util.Log
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
-import java.net.SocketTimeoutException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 object NtpClient {
-    private const val TAG = "NtpClient"
-
     private const val NTP_PORT = 123
     private const val NTP_TIMEOUT = 15_000
     private const val NTP_PACKET_SIZE = 48
@@ -59,9 +55,6 @@ object NtpClient {
         if (version != VERSION_3 && version != VERSION_4)
             throw IllegalArgumentException("Version $version is unsupported")
 
-        val socket = DatagramSocket().apply {
-            soTimeout = timeout
-        }
 
         val buffer = ByteArray(NTP_PACKET_SIZE)
         val byteBuffer = ByteBuffer.wrap(buffer)
@@ -69,7 +62,7 @@ object NtpClient {
         val req = DatagramPacket(buffer, buffer.size, address, port)
 
         // samples loop
-        try {
+        DatagramSocket().apply { soTimeout = timeout }.use { socket ->
             for (sample in 0 until samples) {
                 (0 until NTP_PACKET_SIZE).forEach { index -> byteBuffer.put(index, 0) }
                 byteBuffer.put(0, ((VERSION_3 shl 3) or MODE_CLIENT).toByte())
@@ -101,8 +94,7 @@ object NtpClient {
                 val destinationTs = startedAt + duration // T4
 
                 if (originateTs != initiatedTs) {
-                    Log.w(TAG, "Received NTP packet, but the originate timestamp didn't match.")
-                    break
+                    throw IllegalStateException("Received response doesn't match the originate time")
                 }
 
                 val response = NtpResponse(
@@ -124,10 +116,7 @@ object NtpClient {
                 )
                 onResponse(response)
             }
-        } catch (cause: SocketTimeoutException) {
-            Log.w(TAG, cause)
         }
-        socket.close()
     }
 
     @JvmOverloads

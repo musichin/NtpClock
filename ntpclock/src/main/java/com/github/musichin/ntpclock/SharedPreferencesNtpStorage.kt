@@ -14,7 +14,7 @@ class SharedPreferencesNtpStorage(
     companion object {
         private const val KEY_BOOT_COUNT = "boot_id"
         private const val KEY_POOL = "pool"
-        private const val KEY_REALTIME = "realtime"
+        private const val KEY_REALTIME = "elapsedRealtime"
         private const val KEY_NTP_TIME = "ntp_time"
 
         @JvmStatic
@@ -41,8 +41,8 @@ class SharedPreferencesNtpStorage(
             .clear()
             .apply {
                 if (stamp != null) {
-                    putLong(KEY_REALTIME, stamp.realtime)
-                    putLong(KEY_NTP_TIME, stamp.ntpTime)
+                    putLong(KEY_REALTIME, stamp.elapsedRealtime)
+                    putLong(KEY_NTP_TIME, stamp.time)
                     putString(KEY_POOL, stamp.pool)
                     putInt(KEY_BOOT_COUNT, bootCount)
                 }

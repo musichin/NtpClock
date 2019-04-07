@@ -3,93 +3,224 @@ package com.github.musichin.ntpclock
 import android.os.Build
 import androidx.annotation.RequiresApi
 import java.time.Instant
+import java.util.Calendar
 import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 
 object NtpClock {
+    private var runningTask: NtpSyncTask? = null
 
-    private val lock = Any()
+    @get:Synchronized
+    @set:Synchronized
+    @get:JvmStatic
+    @set:JvmStatic
+    var storage: NtpStorage = InMemoryNtpStorage().cached()
 
-    private var sync: NtpSync? = null
-
-    private var storage: NtpStorage = InMemoryNtpStorage()
-
+    @Synchronized
+    @JvmOverloads
     @JvmStatic
     fun sync(
         pool: String,
         version: Int = 3,
         servers: Int = 4,
         samples: Int = 4,
-        executor: (block: () -> Unit) -> Unit = { block -> block() },
-        onDone: ((pool: String, samples: List<Int>, stamp: NtpStamp?) -> Unit)? = null,
-        onChange: ((stamp: NtpStamp?) -> Unit)? = null,
-        onReady: ((stamp: NtpStamp?) -> Unit)? = null
-    ) {
-        synchronized(lock) {
-            if (sync != null) throw IllegalStateException("Sync already in progress")
-
-            var ready: (stamp: NtpStamp?) -> Unit = { stamp ->
-                onReady?.invoke(stamp)
-            }
-
-            val change: (stamp: NtpStamp?) -> Unit = { stamp ->
-                storage.set(stamp)
-                ready(stamp)
-                ready = {}
-                onChange?.invoke(stamp)
-            }
-
-            val done: (List<Int>, stamp: NtpStamp?) -> Unit = { samples, stamp ->
-                change(stamp)
-                sync = null
-                onDone?.invoke(pool, samples, stamp)
-            }
-
-            storage?.get()?.let { stamp ->
-                change(stamp)
-            }
-
-            sync = NtpSync(pool, version, servers, samples, executor, { stamp ->
-                synchronized(lock) { change(stamp) }
-            }, { samples, stamp ->
-                synchronized(lock) { done(samples, stamp) }
-            })
-        }
+        executor: (block: () -> Unit) -> Unit
+    ): NtpSyncTask {
+        return sync(NtpSyncTask.sync(pool, version, servers, samples, executor))
     }
 
+    @Synchronized
+    @JvmOverloads
+    @JvmStatic
+    fun sync(
+        pool: String,
+        version: Int = 3,
+        servers: Int = 4,
+        samples: Int = 4,
+        executor: (block: () -> Unit) -> Unit,
+        onReady: (stamp: NtpStamp) -> Unit
+    ) {
+        sync(NtpSyncTask.sync(pool, version, servers, samples, executor)).onSuccess(onReady)
+    }
+
+    @Synchronized
+    @JvmOverloads
+    @JvmStatic
+    fun sync(
+        pool: String,
+        version: Int = 3,
+        servers: Int = 4,
+        samples: Int = 4,
+        onReady: (stamp: NtpStamp) -> Unit
+    ) {
+        sync(NtpSyncTask.sync(pool, version, servers, samples)).onSuccess(onReady)
+    }
+
+    @Synchronized
+    @JvmOverloads
+    @JvmStatic
+    fun sync(
+        pool: String,
+        version: Int = 3,
+        servers: Int = 4,
+        samples: Int = 4
+    ): NtpSyncTask {
+        return sync(NtpSyncTask.sync(pool, version, servers, samples))
+    }
+
+    @Synchronized
+    @JvmStatic
+    fun sync(task: NtpSyncTask): NtpSyncTask {
+        if (runningTask != null) throwSyncInProgress()
+
+        runningTask = task
+
+        return task.onNext(storage::set)
+    }
+
+    @Synchronized
     @JvmStatic
     fun reset() {
-        synchronized(lock) {
-            if (sync != null) throw IllegalStateException("Sync")
-            storage.set(null)
-        }
+        if (runningTask != null) throwSyncInProgress()
+        storage.set(null)
     }
 
     @JvmStatic
-    fun stamp(): NtpStamp? = storage.get() ?: synchronized(lock) { storage.get() }
+    fun stamp(): NtpStamp = stampOrNull() ?: throwNotSynced()
 
     @JvmStatic
-    fun requireStamp(): NtpStamp = stamp() ?: throwNotSynced()
+    fun stampOrNull(): NtpStamp? = storage.get() ?: synchronized(this) { storage.get() }
+
 
     @JvmStatic
-    fun now(): Long? = stamp()?.now()
+    fun millis(): Long? = stamp().millis()
 
     @JvmStatic
-    fun requireNow(): Long = now() ?: throwNotSynced()
+    fun millisOrNull(): Long? = stampOrNull()?.millis()
 
     @JvmStatic
-    fun date(): Date? = now()?.let { Date(it) }
+    fun millisOrElse(default: Long): Long = stampOrNull()?.millis() ?: default
 
     @JvmStatic
-    fun requireDate(): Date = date() ?: throwNotSynced()
+    fun millisOrElse(default: () -> Long): Long = stampOrNull()?.millis() ?: default()
 
     @JvmStatic
+    fun millisOrSystemValue(): Long = stampOrNull()?.millis() ?: System.currentTimeMillis()
+
+
+    @JvmStatic
+    fun date(): Date? = stampOrNull()?.date()
+
+    @JvmStatic
+    fun dateOrNull(): Date? = stampOrNull()?.date()
+
+    @JvmStatic
+    fun dateOrElse(default: Date): Date = stampOrNull()?.date() ?: default
+
+    @JvmStatic
+    fun dateOrElse(default: () -> Date): Date = stampOrNull()?.date() ?: default()
+
+    @JvmStatic
+    fun dateOrSystemValue(): Date = stampOrNull()?.date() ?: Date(System.currentTimeMillis())
+
+
+    @JvmStatic
+    @JvmOverloads
+    fun calendar(
+        zone: TimeZone = TimeZone.getDefault(),
+        locale: Locale =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) Locale.getDefault(Locale.Category.FORMAT)
+            else Locale.getDefault()
+    ): Calendar = stamp().calendar()
+
+    @JvmStatic
+    @JvmOverloads
+    fun calendarOrNull(
+        zone: TimeZone = TimeZone.getDefault(),
+        locale: Locale =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) Locale.getDefault(Locale.Category.FORMAT)
+            else Locale.getDefault()
+    ): Calendar? = stampOrNull()?.calendar()
+
+    @JvmStatic
+    @JvmOverloads
+    fun calendarOrDefault(
+        zone: TimeZone = TimeZone.getDefault(),
+        locale: Locale =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) Locale.getDefault(Locale.Category.FORMAT)
+            else Locale.getDefault(),
+        default: Calendar
+    ): Calendar = stampOrNull()?.calendar() ?: default
+
+    @JvmStatic
+    @JvmOverloads
+    fun calendarOrDefault(
+        zone: TimeZone = TimeZone.getDefault(),
+        locale: Locale =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) Locale.getDefault(Locale.Category.FORMAT)
+            else Locale.getDefault(),
+        default: () -> Calendar
+    ): Calendar = stampOrNull()?.calendar() ?: default()
+
+    @JvmStatic
+    @JvmOverloads
+    fun calendarOrSystemValue(
+        zone: TimeZone = TimeZone.getDefault(),
+        locale: Locale =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) Locale.getDefault(Locale.Category.FORMAT)
+            else Locale.getDefault()
+    ): Calendar = stampOrNull()?.calendar() ?: Calendar.getInstance(zone, locale)
+
+
     @RequiresApi(Build.VERSION_CODES.O)
-    fun instant(): Instant? = now()?.let { Instant.ofEpochMilli(it) }
+    @JvmStatic
+    fun instant(): Instant? = stamp().instant()
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    @JvmStatic
+    fun instantOrNull(): Instant? = stampOrNull()?.instant()
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    @JvmStatic
+    fun instantOrElse(default: Instant): Instant = stampOrNull()?.instant() ?: default
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    @JvmStatic
+    fun instantOrElse(default: () -> Instant): Instant = stampOrNull()?.instant() ?: default()
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    @JvmStatic
+    fun instantOrSystemValue(): Instant = stampOrNull()?.instant() ?: Instant.ofEpochMilli(System.currentTimeMillis())
+
 
     @JvmStatic
-    @RequiresApi(Build.VERSION_CODES.O)
-    fun requireInstant(): Instant = instant() ?: throwNotSynced()
+    fun millisAt(elapsedRealtime: Long): Long = stamp().millisAt(elapsedRealtime)
 
-    private fun throwNotSynced(): Nothing =
-        throw IllegalStateException("NtpClock is not synchronized")
+    @JvmStatic
+    fun millisAtOrNull(elapsedRealtime: Long): Long? = stampOrNull()?.millisAt(elapsedRealtime)
+
+
+//    fun atOrNull(realtime: Long): Long? = stampOrNull()?.calculateAt(realtime)
+//    fun atOrElse(realtime: Long, default: Long): Long = stampOrNull()?.calculateAt(realtime) ?: default
+//    fun atOrElse(realtime: Long, default: () -> Long): Long = stampOrNull()?.calculateAt(realtime) ?: default()
+//
+//    fun atDateOrNull(realtime: Long): Date? = stampOrNull()?.calculateAt(realtime)?.let(::Date)
+//    fun atDateOrElse(realtime: Long, default: Date): Date = stampOrNull()?.calculateAt(realtime)?.let(::Date) ?: default
+//    fun atDateOrElse(realtime: Long, default: () -> Date): Date =
+//        stampOrNull()?.calculateAt(realtime)?.let(::Date) ?: default()
+//
+//    @RequiresApi(Build.VERSION_CODES.O)
+//    fun atInstantOrNull(realtime: Long): Instant? = stampOrNull()?.calculateAt(realtime)?.let(Instant::ofEpochMilli)
+//
+//    @RequiresApi(Build.VERSION_CODES.O)
+//    fun atInstantOrElse(realtime: Long, default: Instant): Instant =
+//        stampOrNull()?.calculateAt(realtime)?.let(Instant::ofEpochMilli) ?: default
+//
+//    @RequiresApi(Build.VERSION_CODES.O)
+//    fun atInstantOrNull(realtime: Long, default: () -> Instant): Instant =
+//        stampOrNull()?.calculateAt(realtime)?.let(Instant::ofEpochMilli) ?: default()
+
+    private fun throwNotSynced(): Nothing = throw IllegalStateException("Not synchronized")
+    private fun throwSyncInProgress(): Nothing = throw IllegalStateException("Sync in progress")
 }
