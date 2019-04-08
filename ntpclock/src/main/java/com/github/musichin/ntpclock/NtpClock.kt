@@ -21,37 +21,11 @@ object NtpClock {
     @JvmOverloads
     @JvmStatic
     fun sync(
-        pool: String,
+        pool: String = "pool.ntp.org",
         version: Int = 3,
         servers: Int = 4,
         samples: Int = 4,
-        executor: (block: () -> Unit) -> Unit
-    ): NtpSyncTask {
-        return sync(NtpSyncTask.sync(pool, version, servers, samples, executor))
-    }
-
-    @Synchronized
-    @JvmOverloads
-    @JvmStatic
-    fun sync(
-        pool: String,
-        version: Int = 3,
-        servers: Int = 4,
-        samples: Int = 4,
-        executor: (block: () -> Unit) -> Unit,
-        onReady: (stamp: NtpStamp) -> Unit
-    ) {
-        sync(NtpSyncTask.sync(pool, version, servers, samples, executor)).onSuccess(onReady)
-    }
-
-    @Synchronized
-    @JvmOverloads
-    @JvmStatic
-    fun sync(
-        pool: String,
-        version: Int = 3,
-        servers: Int = 4,
-        samples: Int = 4,
+        timeout: Int = 15_000,
         onReady: (stamp: NtpStamp) -> Unit
     ) {
         sync(NtpSyncTask.sync(pool, version, servers, samples)).onSuccess(onReady)
@@ -61,10 +35,11 @@ object NtpClock {
     @JvmOverloads
     @JvmStatic
     fun sync(
-        pool: String,
+        pool: String = "pool.ntp.org",
         version: Int = 3,
         servers: Int = 4,
-        samples: Int = 4
+        samples: Int = 4,
+        timeout: Int = 15_000
     ): NtpSyncTask {
         return sync(NtpSyncTask.sync(pool, version, servers, samples))
     }
@@ -76,7 +51,11 @@ object NtpClock {
 
         runningTask = task
 
-        return task.onNext(storage::set)
+        return task.onNext(storage::set).onComplete { _, _ ->
+            synchronized(this) {
+                runningTask = null
+            }
+        }
     }
 
     @Synchronized

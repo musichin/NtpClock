@@ -9,23 +9,22 @@ class NtpSyncTask private constructor(
     private val version: Int,
     private val servers: Int,
     private val samples: Int,
+    private val timeout: Int,
     private val executor: (() -> Unit) -> Unit
 ) {
     companion object {
         @JvmOverloads
         @JvmStatic
         fun sync(
-            pool: String,
+            pool: String = "pool.ntp.org",
             version: Int = 3,
             servers: Int = 4,
-            samples: Int = 4
+            samples: Int = 4,
+            timeout: Int = 15_000
         ): NtpSyncTask {
             val executor = Executors.newFixedThreadPool(servers)
 
-            return sync(pool, version, servers, samples, executor)
-                .onComplete { _, _ ->
-                    executor.shutdown()
-                }
+            return sync(pool, version, servers, samples, timeout, executor).onComplete { _, _ -> executor.shutdown() }
         }
 
         @JvmOverloads
@@ -35,18 +34,10 @@ class NtpSyncTask private constructor(
             version: Int = 3,
             servers: Int = 4,
             samples: Int = 4,
+            timeout: Int = 15_000,
             executor: Executor
-        ) = sync(pool, version, servers, samples, executor::execute)
+        ) = NtpSyncTask(pool, version, servers, samples, timeout) { executor.execute(it) }
 
-        @JvmOverloads
-        @JvmStatic
-        fun sync(
-            pool: String,
-            version: Int = 3,
-            servers: Int = 4,
-            samples: Int = 4,
-            executor: (() -> Unit) -> Unit
-        ) = NtpSyncTask(pool = pool, version = version, servers = servers, samples = samples, executor = executor)
 
         private fun NtpResponse.isCandidate(): Boolean {
             return stratum < 15
@@ -90,72 +81,45 @@ class NtpSyncTask private constructor(
     private val nextCallbacks = mutableListOf<(NtpStamp) -> Unit>()
     private val successCallbacks = mutableListOf<(NtpStamp) -> Unit>()
     private val errorCallbacks = mutableListOf<(Exception) -> Unit>()
+    private val completeCallbacks = mutableListOf<(NtpStamp?, Exception?) -> Unit>()
 
-    private var success = 0
-    private var executing = 0
     private var results = mutableMapOf<InetAddress, MutableList<NtpResponse>>()
     private var errors = mutableMapOf<InetAddress, Exception>()
-    private val remainingServers = mutableListOf<InetAddress>()
 
+    private var addresses: MutableList<InetAddress> = mutableListOf()
+    private var executing = 0
 
     init {
         execute()
     }
 
-    private fun execute() {
-        val addresses = try {
-            InetAddress.getAllByName(pool)
+    private fun execute() = executor {
+        try {
+            InetAddress.getAllByName(pool).toCollection(addresses)
+
+            repeat(kotlin.math.min(servers, addresses.size)) { executeNext() }
         } catch (cause: Exception) {
-            return next(cause = cause)
+            next(done = true, cause = cause)
         }
-
-        remainingServers.addAll(addresses)
-
-        loop()
     }
 
     @Synchronized
-    private fun loop() {
-        if ((remainingServers.isEmpty() || success == servers) && executing == 0) {
-            return next(done = true)
-        }
-
-        if (executing == servers) return
-        if (remainingServers.isEmpty()) return
-
-        while (remainingServers.isNotEmpty() && (success + executing) < servers) {
-            val address = remainingServers.removeAt(0)
-            executing++
-            executor {
-                request(address, {
-                    onReqResponse(address, it)
-                }, {
-                    onReqComplete(address)
-                }, {
-                    onReqException(address, it)
-                })
-            }
-        }
-    }
-
-    private fun request(
-        address: InetAddress,
-        next: (NtpResponse) -> Unit,
-        done: () -> Unit,
-        error: (Exception) -> Unit
-    ) {
-        try {
-            NtpClient.request(
-                address = address,
-                version = version,
-                samples = samples,
-                onResponse = next
-            )
-        } catch (cause: Exception) {
-            error(cause)
-        }
-
-        done()
+    private fun executeNext() {
+        val address = addresses.removeAt(0)
+        executing++
+        request(address,
+            {
+                // received ntp packet
+                onReqResponse(address, it)
+            },
+            {
+                // request success
+                onReqSuccess()
+            },
+            {
+                // request failed
+                onReqException(address, it)
+            })
     }
 
     @Synchronized
@@ -166,23 +130,45 @@ class NtpSyncTask private constructor(
     }
 
     @Synchronized
-    private fun onReqComplete(address: InetAddress) {
-        if (results[address]?.size == samples) {
-            success++
-        }
-
+    private fun onReqSuccess() {
         executing--
 
-        loop()
+        if (executing == 0) {
+            next(done = true)
+        }
     }
 
     @Synchronized
     private fun onReqException(address: InetAddress, cause: Exception) {
-        // FIXME
         errors[address] = cause
         executing--
 
-        loop()
+        if (addresses.isNotEmpty()) {
+            executeNext()
+        } else if (executing == 0) {
+            next(done = true)
+        }
+    }
+
+    private fun request(
+        address: InetAddress,
+        next: (NtpResponse) -> Unit,
+        done: () -> Unit,
+        error: (Exception) -> Unit
+    ) = executor {
+        try {
+            NtpClient.request(
+                address = address,
+                version = version,
+                samples = samples,
+                timeout = timeout,
+                onResponse = next
+            )
+        } catch (cause: Exception) {
+            return@executor error(cause)
+        }
+
+        done()
     }
 
     private fun calculateStamp(): NtpStamp? =
@@ -203,18 +189,44 @@ class NtpSyncTask private constructor(
 //    }
 
     @Synchronized
-    private fun next(stamp: NtpStamp? = null, done: Boolean = false, cause: Exception? = null) {
-        if (stamp == null) return
-        if (this.stamp == stamp) return
+    private fun next(stamp: NtpStamp? = this.stamp, done: Boolean = false, cause: Exception? = null) {
+        if (this.stamp != stamp && stamp != null) {
+            this.stamp = stamp
+            firstCallbacks.dispatch(stamp, true)
+            nextCallbacks.dispatch(stamp, false)
+        }
 
-        this.stamp = stamp
-
-        firstCallbacks.dispatch(stamp, true)
-        nextCallbacks.dispatch(stamp, done)
+        val error = cause ?: if (done && stamp == null) errors.values.firstOrNull() else null
 
         if (done) {
-            successCallbacks.dispatch(stamp, true)
+            complete(stamp, error)
         }
+    }
+
+    @Synchronized
+    private fun complete(stamp: NtpStamp?, cause: Exception?) {
+        this.complete = true
+        this.error = cause
+
+        if (stamp == null) {
+            errorCallbacks.forEach { it(requireNotNull(cause)) }
+            errorCallbacks.clear()
+            successCallbacks.clear()
+        } else {
+            successCallbacks.dispatch(stamp, false)
+            successCallbacks.clear()
+            errorCallbacks.clear()
+        }
+
+        completeCallbacks.forEach {
+            it(stamp, cause)
+        }
+
+        completeCallbacks.clear()
+        successCallbacks.clear()
+        errorCallbacks.clear()
+        firstCallbacks.clear()
+        nextCallbacks.clear()
     }
 
     @Synchronized
@@ -240,8 +252,13 @@ class NtpSyncTask private constructor(
     }
 
     @Synchronized
-    fun onComplete(cb: (NtpStamp?, Exception) -> Unit): NtpSyncTask {
-        TODO()
+    fun onComplete(cb: (NtpStamp?, Exception?) -> Unit): NtpSyncTask {
+        if (complete) {
+            cb(stamp, error)
+        } else {
+            completeCallbacks.add(cb)
+        }
+
         return this
     }
 
