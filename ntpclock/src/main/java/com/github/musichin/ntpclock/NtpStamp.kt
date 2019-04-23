@@ -6,7 +6,10 @@ import android.os.Parcelable
 import android.os.SystemClock
 import androidx.annotation.RequiresApi
 import java.io.Serializable
+import java.time.Clock
 import java.time.Instant
+import java.time.ZoneId
+import java.time.ZoneOffset
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
@@ -33,6 +36,18 @@ data class NtpStamp(
         }
     }
 
+    override fun writeToParcel(parcel: Parcel, flags: Int) {
+        parcel.writeString(pool)
+        parcel.writeLong(time)
+        parcel.writeLong(elapsedRealtime)
+    }
+
+    override fun describeContents(): Int {
+        return 0
+    }
+
+    fun offset(): Long = System.currentTimeMillis() - millis()
+
     fun millis(): Long = millisAt(SystemClock.elapsedRealtime())
 
     fun date(): Date = Date(time)
@@ -48,6 +63,15 @@ data class NtpStamp(
     @RequiresApi(Build.VERSION_CODES.O)
     fun instant(): Instant = Instant.ofEpochMilli(time)
 
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun clock(zone: ZoneId): Clock = RealtimeClock(zone, this)
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun clockUTC(): Clock = RealtimeClock(ZoneOffset.UTC, this)
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun clockDefaultZone(): Clock = RealtimeClock(ZoneId.systemDefault(), this)
+
     fun millisAt(elapsedRealtime: Long): Long = this.time + (elapsedRealtime - this.elapsedRealtime)
 
     //
@@ -56,13 +80,4 @@ data class NtpStamp(
 //    @RequiresApi(Build.VERSION_CODES.O)
 //    fun atInstant(realtime: Long): Instant = Instant.ofEpochMilli(stamp().calculateAt(realtime))
 
-    override fun writeToParcel(parcel: Parcel, flags: Int) {
-        parcel.writeString(pool)
-        parcel.writeLong(time)
-        parcel.writeLong(elapsedRealtime)
-    }
-
-    override fun describeContents(): Int {
-        return 0
-    }
 }

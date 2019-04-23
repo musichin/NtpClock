@@ -28,7 +28,7 @@ object NtpClock {
         timeout: Int = 15_000,
         onReady: (stamp: NtpStamp) -> Unit
     ) {
-        sync(NtpSyncTask.sync(pool, version, servers, samples)).onSuccess(onReady)
+        sync(NtpSyncTask.sync(pool, version, servers, samples, timeout)).onSuccess(onReady)
     }
 
     @Synchronized
@@ -41,7 +41,7 @@ object NtpClock {
         samples: Int = 4,
         timeout: Int = 15_000
     ): NtpSyncTask {
-        return sync(NtpSyncTask.sync(pool, version, servers, samples))
+        return sync(NtpSyncTask.sync(pool, version, servers, samples, timeout))
     }
 
     @Synchronized
