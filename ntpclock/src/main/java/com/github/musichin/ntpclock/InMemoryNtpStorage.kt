@@ -4,18 +4,11 @@ import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.withLock
 
 class InMemoryNtpStorage : NtpStorage() {
-    private var stamp: NtpStamp? = null
     private val lock = ReentrantReadWriteLock()
 
-    override fun set(stamp: NtpStamp?) {
-        lock.writeLock().withLock {
-            this.stamp = stamp
+    override var stamp: NtpStamp? = null
+        get() = lock.readLock().withLock { field }
+        set(value) = lock.writeLock().withLock {
+            field = value
         }
-    }
-
-    override fun get(): NtpStamp? {
-        return lock.readLock().withLock {
-            this.stamp
-        }
-    }
 }

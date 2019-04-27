@@ -51,7 +51,7 @@ object NtpClock {
 
         runningTask = task
 
-        return task.onNext(storage::set).onComplete { _, _ ->
+        return task.onNext(storage::stamp::set).onComplete { _, _ ->
             synchronized(this) {
                 runningTask = null
             }
@@ -62,14 +62,14 @@ object NtpClock {
     @JvmStatic
     fun reset() {
         if (runningTask != null) throwSyncInProgress()
-        storage.set(null)
+        storage.stamp = null
     }
 
     @JvmStatic
     fun stamp(): NtpStamp = stampOrNull() ?: throwNotSynced()
 
     @JvmStatic
-    fun stampOrNull(): NtpStamp? = storage.get() ?: synchronized(this) { storage.get() }
+    fun stampOrNull(): NtpStamp? = storage.stamp ?: synchronized(this) { storage.stamp }
 
 
     @JvmStatic

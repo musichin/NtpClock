@@ -1,5 +1,6 @@
 package com.github.musichin.ntpclock
 
+import android.os.Handler
 import java.net.InetAddress
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
@@ -45,12 +46,6 @@ class NtpSyncTask private constructor(
                     && leapIndicator != NtpResponse.LI_ALARM_CONDITION
         }
 
-        private fun MutableList<(NtpStamp) -> Unit>.dispatch(stamp: NtpStamp, clear: Boolean) {
-            val copy = toList()
-            if (clear) clear()
-            copy.forEach { it(stamp) }
-        }
-
         private fun List<NtpResponse>.calculateStamp(pool: String): NtpStamp? {
             return filter { it.isCandidate() }
                 .sortedBy { it.transmissionDelay }
@@ -77,11 +72,7 @@ class NtpSyncTask private constructor(
     var error: Exception? = null
         private set
 
-    private val firstCallbacks = mutableListOf<(NtpStamp) -> Unit>()
-    private val nextCallbacks = mutableListOf<(NtpStamp) -> Unit>()
-    private val successCallbacks = mutableListOf<(NtpStamp) -> Unit>()
-    private val errorCallbacks = mutableListOf<(Exception) -> Unit>()
-    private val completeCallbacks = mutableListOf<(NtpStamp?, Exception?) -> Unit>()
+    private val listeners = mutableListOf<Listener>()
 
     private var results = mutableMapOf<InetAddress, MutableList<NtpResponse>>()
     private var errors = mutableMapOf<InetAddress, Exception>()
@@ -174,112 +165,162 @@ class NtpSyncTask private constructor(
     private fun calculateStamp(): NtpStamp? =
         results.values.fold(emptyList<NtpResponse>()) { acc, res -> acc.plus(res) }.calculateStamp(pool)
 
-//    @Synchronized
-//    private fun onDone() {
-//        val stamp = this.stamp
-//
-//        if (stamp != null) {
-//            firstCallbacks.dispatch(stamp)
-//            lastCallbacks.dispatch(stamp)
-//        }
-//        firstCallbacks.clear()
-//        nextCallbacks.clear()
-//        lastCallbacks.clear()
-//        // FIXME complete callbacks
-//    }
-
     @Synchronized
     private fun next(stamp: NtpStamp? = this.stamp, done: Boolean = false, cause: Exception? = null) {
-        if (this.stamp != stamp && stamp != null) {
-            this.stamp = stamp
-            firstCallbacks.dispatch(stamp, true)
-            nextCallbacks.dispatch(stamp, false)
+        if (this.complete) return
+
+        val oldStamp = this.stamp
+        val newStamp = stamp ?: oldStamp
+        this.stamp = stamp ?: oldStamp
+        val complete = done || cause != null
+        this.complete = complete
+        val error =
+            if (complete && newStamp == null) cause ?: errors.values.firstOrNull() ?: IllegalStateException() else null
+        this.error = error
+
+
+        // dispatch listeners
+        // first / ready
+        if (oldStamp == null && newStamp != null) {
+            listeners.forEach { it.onReady(newStamp) }
         }
 
-        val error = cause ?: if (done && stamp == null) errors.values.firstOrNull() else null
-
-        if (done) {
-            complete(stamp, error)
-        }
-    }
-
-    @Synchronized
-    private fun complete(stamp: NtpStamp?, cause: Exception?) {
-        this.complete = true
-        this.error = cause
-
-        if (stamp == null) {
-            errorCallbacks.forEach { it(requireNotNull(cause)) }
-            errorCallbacks.clear()
-            successCallbacks.clear()
-        } else {
-            successCallbacks.dispatch(stamp, false)
-            successCallbacks.clear()
-            errorCallbacks.clear()
+        // next
+        if (newStamp != null && oldStamp != newStamp) {
+            listeners.forEach { it.onNext(newStamp) }
         }
 
-        completeCallbacks.forEach {
-            it(stamp, cause)
-        }
-
-        completeCallbacks.clear()
-        successCallbacks.clear()
-        errorCallbacks.clear()
-        firstCallbacks.clear()
-        nextCallbacks.clear()
-    }
-
-    @Synchronized
-    fun onReady(cb: (NtpStamp) -> Unit): NtpSyncTask {
-        val stamp = this.stamp
-        if (stamp != null) {
-            cb(stamp)
-        } else if (!complete) {
-            firstCallbacks.add(cb)
-        }
-
-        return this
-    }
-
-    @Synchronized
-    fun onNext(cb: (NtpStamp) -> Unit): NtpSyncTask {
-        if (!complete) {
-            nextCallbacks.add(cb)
-        }
-        stamp?.let(cb)
-
-        return this
-    }
-
-    @Synchronized
-    fun onComplete(cb: (NtpStamp?, Exception?) -> Unit): NtpSyncTask {
+        // success / error / complete
         if (complete) {
-            cb(stamp, error)
-        } else {
-            completeCallbacks.add(cb)
+            if (newStamp != null) {
+                listeners.forEach { it.onSuccess(newStamp) }
+            }
+
+            if (error != null) {
+                listeners.forEach { it.onError(error) }
+            }
+            listeners.forEach { it.onComplete(newStamp, error) }
+            listeners.clear()
         }
+    }
+
+    @Synchronized
+    fun onReady(cb: (NtpStamp) -> Unit) = onReady(Handler(), cb)
+
+    @Synchronized
+    fun onReady(handler: Handler?, cb: (NtpStamp) -> Unit): NtpSyncTask {
+        addListener(handler, object : Listener {
+            override fun onReady(stamp: NtpStamp) = cb(stamp)
+        })
 
         return this
     }
 
     @Synchronized
-    fun onSuccess(cb: (NtpStamp) -> Unit): NtpSyncTask {
-        if (!complete) {
-            successCallbacks.add(cb)
-        } else {
-            stamp?.let(cb)
-        }
+    fun onNext(cb: (NtpStamp) -> Unit) = onNext(Handler(), cb)
+
+    @Synchronized
+    fun onNext(handler: Handler?, cb: (NtpStamp) -> Unit): NtpSyncTask {
+        addListener(handler, object : Listener {
+            override fun onNext(stamp: NtpStamp) = cb(stamp)
+        })
 
         return this
     }
 
     @Synchronized
-    fun onError(cb: (Exception) -> Unit): NtpSyncTask {
-        if (!complete) {
-            errorCallbacks.add(cb)
-        } else {
-            error?.let(cb)
-        }
+    fun onComplete(cb: (NtpStamp?, Exception?) -> Unit) = onComplete(Handler(), cb)
+
+    @Synchronized
+    fun onComplete(handler: Handler?, cb: (NtpStamp?, Exception?) -> Unit): NtpSyncTask {
+        addListener(handler, object : Listener {
+            override fun onComplete(stamp: NtpStamp?, cause: Exception?) = cb(stamp, cause)
+        })
+
         return this
+    }
+
+    @Synchronized
+    fun onSuccess(cb: (NtpStamp) -> Unit) = onSuccess(Handler(), cb)
+
+    @Synchronized
+    fun onSuccess(handler: Handler?, cb: (NtpStamp) -> Unit): NtpSyncTask {
+        addListener(handler, object : Listener {
+            override fun onSuccess(stamp: NtpStamp) = cb(stamp)
+        })
+
+        return this
+    }
+
+    @Synchronized
+    fun onError(
+        cb: (Exception) -> Unit
+    ) = onError(Handler(), cb)
+
+    @Synchronized
+    fun onError(handler: Handler?, cb: (Exception) -> Unit): NtpSyncTask {
+        addListener(handler, object : Listener {
+            override fun onError(cause: Exception) = cb(cause)
+        })
+
+        return this
+    }
+
+    @Synchronized
+    fun addListener(listener: Listener) = addListener(Handler(), listener)
+
+    @Synchronized
+    fun addListener(handler: Handler?, listener: Listener): NtpSyncTask {
+        insertOrDispatchListener(if (handler == null) listener else ListenerWrapper(handler, listener))
+
+        return this
+    }
+
+    @Synchronized
+    private fun insertOrDispatchListener(listener: Listener) {
+        stamp?.let(listener::onReady)
+        stamp?.let(listener::onNext)
+
+        if (complete) {
+            error?.let(listener::onError)
+            stamp?.let(listener::onSuccess)
+            listener.onComplete(stamp, error)
+        } else {
+            listeners.add(listener)
+        }
+    }
+
+    interface Listener {
+        fun onError(cause: Exception) = Unit
+
+        fun onSuccess(stamp: NtpStamp) = Unit
+
+        fun onComplete(stamp: NtpStamp?, cause: Exception?) = Unit
+
+        fun onNext(stamp: NtpStamp) = Unit
+
+        fun onReady(stamp: NtpStamp) = Unit
+    }
+
+    private class ListenerWrapper(private val handler: Handler, private val delegate: Listener) : Listener {
+        override fun onError(cause: Exception) {
+            handler.post { delegate.onError(cause) }
+        }
+
+        override fun onSuccess(stamp: NtpStamp) {
+            handler.post { delegate.onSuccess(stamp) }
+        }
+
+        override fun onComplete(stamp: NtpStamp?, cause: Exception?) {
+            handler.post { delegate.onComplete(stamp, cause) }
+        }
+
+        override fun onNext(stamp: NtpStamp) {
+            handler.post { delegate.onNext(stamp) }
+        }
+
+        override fun onReady(stamp: NtpStamp) {
+            handler.post { delegate.onReady(stamp) }
+        }
     }
 }

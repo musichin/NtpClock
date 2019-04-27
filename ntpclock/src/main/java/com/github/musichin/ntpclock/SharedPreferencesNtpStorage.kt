@@ -9,7 +9,7 @@ import androidx.annotation.RequiresApi
 @RequiresApi(Build.VERSION_CODES.N)
 class SharedPreferencesNtpStorage(
     private val context: Context,
-    val name: String = "com.github.musichin.ntpclock"
+    name: String = "com.github.musichin.ntpclock"
 ) : NtpStorage() {
     companion object {
         private const val KEY_BOOT_COUNT = "boot_id"
@@ -32,45 +32,43 @@ class SharedPreferencesNtpStorage(
 
     private val sharedPreferences = context.getSharedPreferences(name, Context.MODE_PRIVATE)
 
-    private val bootCount by lazy {
-        bootCount(context)
-    }
+    private val bootCount by lazy { bootCount(context) }
 
-    override fun set(stamp: NtpStamp?) {
-        sharedPreferences.edit()
-            .clear()
-            .apply {
-                if (stamp != null) {
-                    putLong(KEY_REALTIME, stamp.elapsedRealtime)
-                    putLong(KEY_NTP_TIME, stamp.time)
-                    putString(KEY_POOL, stamp.pool)
-                    putInt(KEY_BOOT_COUNT, bootCount)
+    override var stamp: NtpStamp?
+        get() {
+            val bootCount =
+                if (sharedPreferences.contains(KEY_BOOT_COUNT))
+                    sharedPreferences.getInt(KEY_BOOT_COUNT, 0)
+                else
+                    return null
+            if (bootCount != this.bootCount) return null
+
+            val pool = sharedPreferences.getString(KEY_POOL, null) ?: return null
+            val realtime =
+                if (sharedPreferences.contains(KEY_REALTIME))
+                    sharedPreferences.getLong(KEY_REALTIME, 0)
+                else
+                    return null
+
+            val ntpTime =
+                if (sharedPreferences.contains(KEY_NTP_TIME))
+                    sharedPreferences.getLong(KEY_NTP_TIME, 0)
+                else
+                    return null
+
+            return NtpStamp(pool, ntpTime, realtime)
+        }
+        set(value) {
+            sharedPreferences.edit()
+                .clear()
+                .apply {
+                    if (value != null) {
+                        putLong(KEY_REALTIME, value.elapsedRealtime)
+                        putLong(KEY_NTP_TIME, value.time)
+                        putString(KEY_POOL, value.pool)
+                        putInt(KEY_BOOT_COUNT, bootCount)
+                    }
                 }
-            }
-            .apply()
-    }
-
-    override fun get(): NtpStamp? {
-        val bootCount =
-            if (sharedPreferences.contains(KEY_BOOT_COUNT))
-                sharedPreferences.getInt(KEY_BOOT_COUNT, 0)
-            else
-                return null
-        if (bootCount != this.bootCount) return null
-
-        val pool = sharedPreferences.getString(KEY_POOL, null) ?: return null
-        val realtime =
-            if (sharedPreferences.contains(KEY_REALTIME))
-                sharedPreferences.getLong(KEY_REALTIME, 0)
-            else
-                return null
-
-        val ntpTime =
-            if (sharedPreferences.contains(KEY_NTP_TIME))
-                sharedPreferences.getLong(KEY_NTP_TIME, 0)
-            else
-                return null
-
-        return NtpStamp(pool, ntpTime, realtime)
-    }
+                .apply()
+        }
 }

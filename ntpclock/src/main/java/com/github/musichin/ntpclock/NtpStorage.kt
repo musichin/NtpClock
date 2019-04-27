@@ -1,8 +1,7 @@
 package com.github.musichin.ntpclock
 
 abstract class NtpStorage {
-    abstract fun set(stamp: NtpStamp?)
-    abstract fun get(): NtpStamp?
+    abstract var stamp: NtpStamp?
 
     fun cached(): NtpStorage = CachedNtpStorage(this)
 }
