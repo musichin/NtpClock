@@ -253,9 +253,7 @@ class NtpSyncTask private constructor(
     }
 
     @Synchronized
-    fun onError(
-        cb: (Exception) -> Unit
-    ) = onError(Handler(), cb)
+    fun onError(cb: (Exception) -> Unit) = onError(Handler(), cb)
 
     @Synchronized
     fun onError(handler: Handler?, cb: (Exception) -> Unit): NtpSyncTask {
