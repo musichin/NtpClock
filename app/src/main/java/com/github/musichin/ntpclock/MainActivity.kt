@@ -3,7 +3,6 @@ package com.github.musichin.ntpclock
 import android.os.Bundle
 import android.text.format.DateFormat
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.android.synthetic.main.activity_main.*
@@ -26,23 +25,23 @@ class MainActivity : AppCompatActivity() {
             viewModel.sync()
         }
 
-        viewModel.clock.observe(this, Observer { millis ->
+        viewModel.clock.observe(this) { millis ->
             date.text = DateFormat.getLongDateFormat(this).format(Date(millis))
 
             val hour24 = DateFormat.is24HourFormat(this)
             val pattern = if (hour24) "HH:mm:ss" else "hh:mm:ss"
             time.text = SimpleDateFormat(pattern, Locale.getDefault()).format(Date(millis))
-        })
+        }
 
-        viewModel.offset.observe(this, Observer {
+        viewModel.offset.observe(this) {
             offset.text = it.toString()
-        })
+        }
 
-        viewModel.loading.observe(this, Observer {
+        viewModel.loading.observe(this) {
             refresh.isRefreshing = it == true
-        })
+        }
 
-        viewModel.error.observe(this, Observer {
+        viewModel.error.observe(this) {
             val cause = it?.consume()
 
             if (cause != null) {
@@ -52,7 +51,7 @@ class MainActivity : AppCompatActivity() {
                     Snackbar.LENGTH_LONG
                 ).show()
             }
-        })
+        }
     }
 
     override fun onStart() {

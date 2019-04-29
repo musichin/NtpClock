@@ -5,7 +5,6 @@ import android.os.Build
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.Transformations
 
 class ClockViewModel(application: Application) : AndroidViewModel(application) {
     private var syncing = false
@@ -13,12 +12,11 @@ class ClockViewModel(application: Application) : AndroidViewModel(application) {
     private val _time = MutableLiveData<NtpStamp?>()
     private val _loading = MutableLiveData<Boolean>()
     private val _error = MutableLiveData<Event<Throwable>?>()
+    private val _timeChanges = TimeChangedLiveData(application)
 
-    val clock: LiveData<Long> = Transformations.switchMap(_time) { stamp ->
-        stamp?.let(::TimeLiveData)
-    }
+    val clock: LiveData<Long> = combineLatest(_time, _timeChanges).switchMap { (stamp) -> stamp?.let(::TimeLiveData) }
 
-    val offset: LiveData<Long> = Transformations.map(_time) { stamp ->
+    val offset: LiveData<Long?> = combineLatest(_time, _timeChanges) { stamp, _ ->
         stamp?.offset()
     }
 
