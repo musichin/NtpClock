@@ -9,7 +9,7 @@ import androidx.annotation.RequiresApi
 @RequiresApi(Build.VERSION_CODES.N)
 class SharedPreferencesNtpStorage(
     private val context: Context,
-    name: String = "com.github.musichin.ntpclock"
+    name: String = BuildConfig.APPLICATION_ID
 ) : NtpStorage() {
     companion object {
         private const val KEY_BOOT_COUNT = "boot_id"

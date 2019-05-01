@@ -72,7 +72,7 @@ class NtpSyncTask private constructor(
     var error: Exception? = null
         private set
 
-    private val listeners = mutableListOf<Listener>()
+    private val listeners = mutableListOf<ListenerWrapper>()
 
     private var results = mutableMapOf<InetAddress, MutableList<NtpResponse>>()
     private var errors = mutableMapOf<InetAddress, Exception>()
@@ -209,7 +209,7 @@ class NtpSyncTask private constructor(
 
     @Synchronized
     fun onReady(handler: Handler?, cb: (NtpStamp) -> Unit): NtpSyncTask {
-        addListener(handler, object : Listener {
+        addListener(cb, handler, object : Listener {
             override fun onReady(stamp: NtpStamp) = cb(stamp)
         })
 
@@ -221,7 +221,7 @@ class NtpSyncTask private constructor(
 
     @Synchronized
     fun onUpdate(handler: Handler?, cb: (NtpStamp) -> Unit): NtpSyncTask {
-        addListener(handler, object : Listener {
+        addListener(cb, handler, object : Listener {
             override fun onUpdate(stamp: NtpStamp) = cb(stamp)
         })
 
@@ -233,7 +233,7 @@ class NtpSyncTask private constructor(
 
     @Synchronized
     fun onComplete(handler: Handler?, cb: (NtpStamp?, Exception?) -> Unit): NtpSyncTask {
-        addListener(handler, object : Listener {
+        addListener(cb, handler, object : Listener {
             override fun onComplete(stamp: NtpStamp?, cause: Exception?) = cb(stamp, cause)
         })
 
@@ -245,7 +245,7 @@ class NtpSyncTask private constructor(
 
     @Synchronized
     fun onSuccess(handler: Handler?, cb: (NtpStamp) -> Unit): NtpSyncTask {
-        addListener(handler, object : Listener {
+        addListener(cb, handler, object : Listener {
             override fun onSuccess(stamp: NtpStamp) = cb(stamp)
         })
 
@@ -257,7 +257,7 @@ class NtpSyncTask private constructor(
 
     @Synchronized
     fun onError(handler: Handler?, cb: (Exception) -> Unit): NtpSyncTask {
-        addListener(handler, object : Listener {
+        addListener(cb, handler, object : Listener {
             override fun onError(cause: Exception) = cb(cause)
         })
 
@@ -269,13 +269,27 @@ class NtpSyncTask private constructor(
 
     @Synchronized
     fun addListener(handler: Handler?, listener: Listener): NtpSyncTask {
-        insertOrDispatchListener(if (handler == null) listener else ListenerWrapper(handler, listener))
+        addListener(listener, handler, listener)
 
         return this
     }
 
     @Synchronized
-    private fun insertOrDispatchListener(listener: Listener) {
+    fun removeListener(listener: Listener): NtpSyncTask {
+        listeners.removeAll { it.id == listener }
+
+        return this
+    }
+
+    @Synchronized
+    private fun addListener(id: Any, handler: Handler?, listener: Listener): NtpSyncTask {
+        insertOrDispatchListener(ListenerWrapper(id, handler, listener))
+
+        return this
+    }
+
+    @Synchronized
+    private fun insertOrDispatchListener(listener: ListenerWrapper) {
         stamp?.let(listener::onReady)
         stamp?.let(listener::onUpdate)
 
@@ -300,25 +314,53 @@ class NtpSyncTask private constructor(
         fun onReady(stamp: NtpStamp) = Unit
     }
 
-    private class ListenerWrapper(private val handler: Handler, private val delegate: Listener) : Listener {
+    private class ListenerWrapper(
+        val id: Any,
+        private val handler: Handler?,
+        private val delegate: Listener
+    ) : Listener {
         override fun onError(cause: Exception) {
-            handler.post { delegate.onError(cause) }
+            if (handler != null) {
+                handler.post { delegate.onError(cause) }
+            } else {
+                delegate.onError(cause)
+            }
         }
 
         override fun onSuccess(stamp: NtpStamp) {
-            handler.post { delegate.onSuccess(stamp) }
+            if (handler != null) {
+                handler.post { delegate.onSuccess(stamp) }
+            } else {
+                delegate.onSuccess(stamp)
+            }
         }
 
         override fun onComplete(stamp: NtpStamp?, cause: Exception?) {
-            handler.post { delegate.onComplete(stamp, cause) }
+            if (handler != null) {
+                handler.post { delegate.onComplete(stamp, cause) }
+            } else {
+                delegate.onComplete(stamp, cause)
+            }
         }
 
         override fun onUpdate(stamp: NtpStamp) {
-            handler.post { delegate.onUpdate(stamp) }
+            if (handler != null) {
+                handler.post { delegate.onUpdate(stamp) }
+            } else {
+                delegate.onUpdate(stamp)
+            }
         }
 
         override fun onReady(stamp: NtpStamp) {
-            handler.post { delegate.onReady(stamp) }
+            if (handler != null) {
+                handler.post { delegate.onReady(stamp) }
+            } else {
+                delegate.onReady(stamp)
+            }
         }
+
+        override fun hashCode(): Int = id.hashCode()
+
+        override fun equals(other: Any?): Boolean = other is ListenerWrapper && id == other.id
     }
 }

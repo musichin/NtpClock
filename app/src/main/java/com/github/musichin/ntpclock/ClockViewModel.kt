@@ -1,7 +1,6 @@
 package com.github.musichin.ntpclock
 
 import android.app.Application
-import android.os.Build
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -24,11 +23,7 @@ class ClockViewModel(application: Application) : AndroidViewModel(application) {
     init {
         _loading.value = false
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            NtpClock.storage = SharedPreferencesNtpStorage(application).cached()
-
-            NtpClock.stampOrNull()?.let { _time.value = it }
-        }
+        NtpClock.stampOrNull()?.let { _time.value = it }
     }
 
     fun sync() {
