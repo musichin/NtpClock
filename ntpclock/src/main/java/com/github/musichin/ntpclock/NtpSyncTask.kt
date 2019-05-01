@@ -187,7 +187,7 @@ class NtpSyncTask private constructor(
 
         // next
         if (newStamp != null && oldStamp != newStamp) {
-            listeners.forEach { it.onNext(newStamp) }
+            listeners.forEach { it.onUpdate(newStamp) }
         }
 
         // success / error / complete
@@ -217,12 +217,12 @@ class NtpSyncTask private constructor(
     }
 
     @Synchronized
-    fun onNext(cb: (NtpStamp) -> Unit) = onNext(Handler(), cb)
+    fun onUpdate(cb: (NtpStamp) -> Unit) = onUpdate(Handler(), cb)
 
     @Synchronized
-    fun onNext(handler: Handler?, cb: (NtpStamp) -> Unit): NtpSyncTask {
+    fun onUpdate(handler: Handler?, cb: (NtpStamp) -> Unit): NtpSyncTask {
         addListener(handler, object : Listener {
-            override fun onNext(stamp: NtpStamp) = cb(stamp)
+            override fun onUpdate(stamp: NtpStamp) = cb(stamp)
         })
 
         return this
@@ -277,7 +277,7 @@ class NtpSyncTask private constructor(
     @Synchronized
     private fun insertOrDispatchListener(listener: Listener) {
         stamp?.let(listener::onReady)
-        stamp?.let(listener::onNext)
+        stamp?.let(listener::onUpdate)
 
         if (complete) {
             error?.let(listener::onError)
@@ -295,7 +295,7 @@ class NtpSyncTask private constructor(
 
         fun onComplete(stamp: NtpStamp?, cause: Exception?) = Unit
 
-        fun onNext(stamp: NtpStamp) = Unit
+        fun onUpdate(stamp: NtpStamp) = Unit
 
         fun onReady(stamp: NtpStamp) = Unit
     }
@@ -313,8 +313,8 @@ class NtpSyncTask private constructor(
             handler.post { delegate.onComplete(stamp, cause) }
         }
 
-        override fun onNext(stamp: NtpStamp) {
-            handler.post { delegate.onNext(stamp) }
+        override fun onUpdate(stamp: NtpStamp) {
+            handler.post { delegate.onUpdate(stamp) }
         }
 
         override fun onReady(stamp: NtpStamp) {

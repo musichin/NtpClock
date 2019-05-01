@@ -26,9 +26,9 @@ object NtpClock {
         servers: Int = 4,
         samples: Int = 4,
         timeout: Int = 15_000,
-        onReady: (stamp: NtpStamp) -> Unit
+        onComplete: (stamp: NtpStamp?, case: Throwable?) -> Unit
     ) {
-        sync(NtpSyncTask.sync(pool, version, servers, samples, timeout)).onSuccess(onReady)
+        sync(pool, version, servers, samples, timeout).onComplete(onComplete)
     }
 
     @Synchronized
@@ -41,21 +41,25 @@ object NtpClock {
         samples: Int = 4,
         timeout: Int = 15_000
     ): NtpSyncTask {
-        return sync(NtpSyncTask.sync(pool, version, servers, samples, timeout))
+        return runningTask ?: createTask(pool, version, servers, samples, timeout)
     }
 
-    @Synchronized
-    @JvmStatic
-    fun sync(task: NtpSyncTask): NtpSyncTask {
-        if (runningTask != null) throwSyncInProgress()
-
-        runningTask = task
-
-        return task.onNext(storage::stamp::set).onComplete { _, _ ->
+    private fun createTask(
+        pool: String = "pool.ntp.org",
+        version: Int = 3,
+        servers: Int = 4,
+        samples: Int = 4,
+        timeout: Int = 15_000
+    ): NtpSyncTask {
+        val task = NtpSyncTask.sync(pool, version, servers, samples, timeout).onComplete { _, _ ->
             synchronized(this) {
                 runningTask = null
             }
         }
+
+        runningTask = task
+
+        return task
     }
 
     @Synchronized
