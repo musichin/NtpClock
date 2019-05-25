@@ -2,8 +2,10 @@ package com.github.musichin.ntpclock
 
 import android.os.Handler
 import java.net.InetAddress
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 class NtpSyncTask private constructor(
     private val pool: String,
@@ -300,6 +302,26 @@ class NtpSyncTask private constructor(
         } else {
             listeners.add(listener)
         }
+    }
+
+    fun await(): NtpStamp {
+        val latch = CountDownLatch(1)
+        onComplete { _, _ -> latch.countDown() }
+        latch.await()
+        val error = this.error
+        if (error != null) throw error
+
+        return requireNotNull(stamp)
+    }
+
+    fun await(timeout: Long, unit: TimeUnit): NtpStamp {
+        val latch = CountDownLatch(1)
+        onComplete { _, _ -> latch.countDown() }
+        latch.await(timeout, unit)
+        val error = this.error
+        if (error != null) throw error
+
+        return requireNotNull(stamp)
     }
 
     interface Listener {
