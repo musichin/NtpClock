@@ -9,13 +9,13 @@ import androidx.annotation.RequiresApi
 @RequiresApi(Build.VERSION_CODES.N)
 class SharedPreferencesNtpStorage(
     private val context: Context,
-    name: String = BuildConfig.APPLICATION_ID
+    name: String = "de.musichin.ntpclock"
 ) : NtpStorage() {
     companion object {
-        private const val KEY_BOOT_COUNT = "boot_id"
+        private const val KEY_BOOT_COUNT = "bootCount"
         private const val KEY_POOL = "pool"
-        private const val KEY_REALTIME = "elapsedRealtime"
-        private const val KEY_NTP_TIME = "ntp_time"
+        private const val KEY_ELAPSED_REALTIME = "elapsedRealtime"
+        private const val KEY_NTP_TIME = "ntpTime"
 
         @JvmStatic
         @RequiresApi(Build.VERSION_CODES.N)
@@ -45,8 +45,8 @@ class SharedPreferencesNtpStorage(
 
             val pool = sharedPreferences.getString(KEY_POOL, null) ?: return null
             val realtime =
-                if (sharedPreferences.contains(KEY_REALTIME))
-                    sharedPreferences.getLong(KEY_REALTIME, 0)
+                if (sharedPreferences.contains(KEY_ELAPSED_REALTIME))
+                    sharedPreferences.getLong(KEY_ELAPSED_REALTIME, 0)
                 else
                     return null
 
@@ -63,7 +63,7 @@ class SharedPreferencesNtpStorage(
                 .clear()
                 .apply {
                     if (value != null) {
-                        putLong(KEY_REALTIME, value.elapsedRealtime)
+                        putLong(KEY_ELAPSED_REALTIME, value.elapsedRealtime)
                         putLong(KEY_NTP_TIME, value.time)
                         putString(KEY_POOL, value.pool)
                         putInt(KEY_BOOT_COUNT, bootCount)
