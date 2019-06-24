@@ -3,7 +3,7 @@
 ## Usage
 ```kotlin
 NtpClock.sync().onSuccess { stamp ->
-    println(stamp.time)
+    println(stamp.millis()) // milliseconds from the epoch of 1970-01-01T00:00:00Z.
 }
 ```
 
