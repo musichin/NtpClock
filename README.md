@@ -1,4 +1,4 @@
-# NTP Clock [ ![Download](https://api.bintray.com/packages/musichin/maven/ntpclock/images/download.svg)](https://bintray.com/musichin/maven/ntpclock/_latestVersion) [![Kotlin](https://img.shields.io/badge/Kotlin-1.3.40-blue.svg)](http://kotlinlang.org) [![Build Status](https://travis-ci.org/musichin/NtpClock.svg?branch=master)](https://travis-ci.org/musichin/NtpClock)
+# NTP Clock [ ![Download](https://api.bintray.com/packages/musichin/maven/NtpClock/images/download.svg)](https://bintray.com/musichin/maven/NtpClock/_latestVersion) [![Kotlin](https://img.shields.io/badge/Kotlin-1.3.40-blue.svg)](http://kotlinlang.org) [![Build Status](https://travis-ci.org/musichin/NtpClock.svg?branch=master)](https://travis-ci.org/musichin/NtpClock)
 
 ## Usage
 ```kotlin
