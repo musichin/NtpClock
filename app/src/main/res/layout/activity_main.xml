@@ -6,7 +6,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:id="@+id/main_container"
-        tools:context=".MainActivity">
+        tools:context="de.musichin.ntpclock.MainActivity">
 
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
             android:id="@+id/refresh"
@@ -18,7 +18,7 @@
                 android:gravity="center"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                tools:context=".MainActivity">
+                tools:context="de.musichin.ntpclock.MainActivity">
             <TextView
                     android:textSize="46sp"
                     tools:text="22:12:50"

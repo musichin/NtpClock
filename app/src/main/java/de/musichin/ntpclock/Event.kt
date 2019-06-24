@@ -1,4 +1,4 @@
-package com.github.musichin.ntpclock
+package de.musichin.ntpclock
 
 class Event<T>(private val content: T) {
     var consumed = false
