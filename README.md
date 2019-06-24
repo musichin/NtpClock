@@ -1,6 +1,6 @@
 # NTP Clock [ ![Download](https://api.bintray.com/packages/musichin/maven/ntpclock/images/download.svg)](https://bintray.com/musichin/maven/ntpclock/_latestVersion) [![Kotlin](https://img.shields.io/badge/Kotlin-1.3.40-blue.svg)](http://kotlinlang.org) [![Build Status](https://travis-ci.org/musichin/NtpClock.svg?branch=master)](https://travis-ci.org/musichin/NtpClock)
 
-## Usage `filter`
+## Usage
 ```kotlin
 NtpClock.sync().onSuccess { stamp ->
     println(stamp.time)
