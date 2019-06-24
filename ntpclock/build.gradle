@@ -28,6 +28,10 @@ android {
     }
 }
 
+afterEvaluate {
+    generateReleaseBuildConfig.enabled = false
+}
+
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     implementation 'androidx.annotation:annotation:1.1.0'
