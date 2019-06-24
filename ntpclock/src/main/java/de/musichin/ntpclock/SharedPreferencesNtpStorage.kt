@@ -1,4 +1,4 @@
-package com.github.musichin.ntpclock
+package de.musichin.ntpclock
 
 import android.content.ContentResolver
 import android.content.Context

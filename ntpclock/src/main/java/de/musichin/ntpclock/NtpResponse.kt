@@ -1,4 +1,4 @@
-package com.github.musichin.ntpclock
+package de.musichin.ntpclock
 
 data class NtpResponse(
     val leapIndicator: Int,

@@ -4,6 +4,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import androidx.lifecycle.LiveData
+import de.musichin.ntpclock.NtpStamp
 
 class TimeLiveData(
     private val elapsedRealtime: Long,

@@ -1,4 +1,4 @@
-package com.github.musichin.ntpclock
+package de.musichin.ntpclock
 
 import android.os.Build
 import androidx.annotation.RequiresApi
@@ -115,7 +115,7 @@ object NtpClock {
         locale: Locale =
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) Locale.getDefault(Locale.Category.FORMAT)
             else Locale.getDefault()
-    ): Calendar = stamp().calendar()
+    ): Calendar = stamp().calendar(zone, locale)
 
     @JvmStatic
     @JvmOverloads
@@ -124,7 +124,7 @@ object NtpClock {
         locale: Locale =
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) Locale.getDefault(Locale.Category.FORMAT)
             else Locale.getDefault()
-    ): Calendar? = stampOrNull()?.calendar()
+    ): Calendar? = stampOrNull()?.calendar(zone, locale)
 
     @JvmStatic
     @JvmOverloads
@@ -134,7 +134,7 @@ object NtpClock {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) Locale.getDefault(Locale.Category.FORMAT)
             else Locale.getDefault(),
         default: Calendar
-    ): Calendar = stampOrNull()?.calendar() ?: default
+    ): Calendar = stampOrNull()?.calendar(zone, locale) ?: default
 
     @JvmStatic
     @JvmOverloads
@@ -144,7 +144,7 @@ object NtpClock {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) Locale.getDefault(Locale.Category.FORMAT)
             else Locale.getDefault(),
         default: () -> Calendar
-    ): Calendar = stampOrNull()?.calendar() ?: default()
+    ): Calendar = stampOrNull()?.calendar(zone, locale) ?: default()
 
     @JvmStatic
     @JvmOverloads
@@ -153,7 +153,7 @@ object NtpClock {
         locale: Locale =
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) Locale.getDefault(Locale.Category.FORMAT)
             else Locale.getDefault()
-    ): Calendar = stampOrNull()?.calendar() ?: Calendar.getInstance(zone, locale)
+    ): Calendar = stampOrNull()?.calendar(zone, locale) ?: Calendar.getInstance(zone, locale)
 
 
     @RequiresApi(Build.VERSION_CODES.O)

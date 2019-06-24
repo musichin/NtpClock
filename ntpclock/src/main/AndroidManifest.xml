@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          package="com.github.musichin.ntpclock">
+          package="de.musichin.ntpclock">
 
     <uses-permission android:name="android.permission.INTERNET"/>
 </manifest>

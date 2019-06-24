@@ -4,6 +4,8 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import de.musichin.ntpclock.NtpClock
+import de.musichin.ntpclock.NtpStamp
 
 class ClockViewModel(application: Application) : AndroidViewModel(application) {
     private val _time = MutableLiveData<NtpStamp?>()

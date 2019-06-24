@@ -1,4 +1,4 @@
-package com.github.musichin.ntpclock
+package de.musichin.ntpclock
 
 abstract class NtpStorage {
     abstract var stamp: NtpStamp?

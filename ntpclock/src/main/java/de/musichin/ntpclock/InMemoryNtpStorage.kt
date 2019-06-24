@@ -1,15 +1,14 @@
-package com.github.musichin.ntpclock
+package de.musichin.ntpclock
 
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.withLock
 
-internal class CachedNtpStorage(private val delegate: NtpStorage) : NtpStorage() {
+class InMemoryNtpStorage : NtpStorage() {
     private val lock = ReentrantReadWriteLock()
 
-    override var stamp: NtpStamp? = lock.readLock().withLock { delegate.stamp }
+    override var stamp: NtpStamp? = null
         get() = lock.readLock().withLock { field }
         set(value) = lock.writeLock().withLock {
             field = value
-            delegate.stamp = value
         }
 }

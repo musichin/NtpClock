@@ -2,6 +2,8 @@ package com.github.musichin.ntpclock
 
 import android.app.Application
 import android.os.Build
+import de.musichin.ntpclock.NtpClock
+import de.musichin.ntpclock.SharedPreferencesNtpStorage
 
 class App : Application() {
     override fun onCreate() {
