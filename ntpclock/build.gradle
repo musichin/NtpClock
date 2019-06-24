@@ -42,6 +42,7 @@ publish {
     groupId = 'de.musichin.ntpclock'
     artifactId = name
     publishVersion = System.getenv("TRAVIS_TAG") ?: 'snapshot'
+    uploadName = rootProject.name
     desc = 'NTP Clock'
     licences = ['MIT']
     website = 'https://github.com/musichin/NtpClock'
