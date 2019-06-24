@@ -1,6 +1,15 @@
 apply plugin: 'com.android.library'
-
 apply plugin: 'kotlin-android'
+apply plugin: 'com.novoda.bintray-release'
+
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.novoda:bintray-release:0.9.1'
+    }
+}
 
 android {
     compileSdkVersion 29
@@ -26,4 +35,14 @@ dependencies {
     androidTestImplementation 'androidx.test:runner:1.2.0'
     androidTestImplementation 'junit:junit:4.12'
     androidTestImplementation "org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version"
+}
+
+publish {
+    userOrg = 'musichin'
+    groupId = 'de.musichin.ntpclock'
+    artifactId = name
+    publishVersion = System.getenv("TRAVIS_TAG") ?: 'snapshot'
+    desc = 'NTP Clock'
+    licences = ['MIT']
+    website = 'https://github.com/musichin/NtpClock'
 }

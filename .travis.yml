@@ -12,9 +12,9 @@ script:
     - |
       if [ -z "$TRAVIS_TAG" ]
       then
-        ./gradlew clean build bintrayUpload -PbintrayUser=$BINTRAY_USER -PbintrayKey=$BINTRAY_KEY -PdryRun=true
+        ./gradlew clean :ntpclock:build :ntpclock:bintrayUpload -PbintrayUser=$BINTRAY_USER -PbintrayKey=$BINTRAY_KEY -PdryRun=true
       else
-        ./gradlew clean build bintrayUpload -PbintrayUser=$BINTRAY_USER -PbintrayKey=$BINTRAY_KEY -PdryRun=false
+        ./gradlew clean :ntpclock:build :ntpclock:bintrayUpload -PbintrayUser=$BINTRAY_USER -PbintrayKey=$BINTRAY_KEY -PdryRun=false
       fi
 
 #after_success:
