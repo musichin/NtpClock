@@ -1,0 +1,28 @@
+version: 2
+jobs:
+  build:
+    working_directory: ~/ntpclock
+    docker:
+      - image: musichin/build-environment-android
+    steps:
+      - checkout
+
+      - restore_cache:
+          key: gradle
+
+      - run: |
+          if [[ ${CIRCLE_BRANCH} =~ ^master$|^hotfix.* ]]
+          then
+            ./gradlew :app:assembleRelease
+          else
+            ./gradlew :app:assembleRelease
+          fi
+
+      - store_artifacts:
+          path: app/build/outputs/
+          destination: .
+
+      - save_cache:
+          key: gradle-{{ epoch }}
+          paths:
+            - "~/.gradle/"
