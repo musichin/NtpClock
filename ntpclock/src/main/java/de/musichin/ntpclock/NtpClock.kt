@@ -1,6 +1,7 @@
 package de.musichin.ntpclock
 
 import android.os.Build
+import android.os.Handler
 import androidx.annotation.RequiresApi
 import java.time.Instant
 import java.util.Calendar
@@ -10,6 +11,8 @@ import java.util.TimeZone
 
 object NtpClock {
     private var runningTask: NtpSyncTask? = null
+
+    private val syncListeners = mutableListOf<(NtpSyncTask) -> Unit>()
 
     @get:Synchronized
     @set:Synchronized
@@ -50,16 +53,45 @@ object NtpClock {
         servers: Int = 4,
         samples: Int = 4,
         timeout: Int = 15_000
-    ): NtpSyncTask {
-        val task = NtpSyncTask.sync(pool, version, servers, samples, timeout).onComplete { _, _ ->
+    ): NtpSyncTask = synchronized(this) {
+        if (runningTask != null) throw IllegalStateException("Sync already in progress")
+        val task = NtpSyncTask.sync(pool, version, servers, samples, timeout)
+        runningTask = task
+        task.onComplete(null) { _, _ ->
             synchronized(this) {
                 runningTask = null
             }
         }
+        syncListeners.toList().forEach { listener -> listener(task) }
+        task
+    }
 
-        runningTask = task
+    @Synchronized
+    @JvmStatic
+    fun isSyncing(): Boolean = runningTask != null
 
-        return task
+    @Synchronized
+    @JvmStatic
+    fun addOnSyncListener(listener: (NtpSyncTask) -> Unit) {
+        addOnSyncListener(Handler(), listener)
+    }
+
+    @Synchronized
+    @JvmStatic
+    fun addOnSyncListener(handler: Handler?, listener: (NtpSyncTask) -> Unit) {
+        val realListener: (NtpSyncTask) -> Unit =
+            if (handler == null)
+                listener
+            else
+                { task -> handler.post { listener(task) } }
+        syncListeners.add(realListener)
+        runningTask?.let(listener)
+    }
+
+    @JvmStatic
+    @Synchronized
+    fun removeOnSyncListener(listener: (NtpSyncTask) -> Unit) {
+        syncListeners.remove(listener)
     }
 
     @Synchronized
