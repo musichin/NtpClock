@@ -66,9 +66,19 @@ object NtpClock {
         task
     }
 
+    /**
+     * Return `true` when sync is in progress otherwise `false`.
+     */
     @Synchronized
     @JvmStatic
     fun isSyncing(): Boolean = runningTask != null
+
+    /**
+     * Returns currently running [NtpSyncTask] or `null` when no sync is in progress.
+     */
+    @Synchronized
+    @JvmStatic
+    fun syncTask(): NtpSyncTask? = runningTask
 
     @Synchronized
     @JvmStatic

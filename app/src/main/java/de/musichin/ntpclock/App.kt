@@ -11,6 +11,7 @@ class App : Application() {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             NtpClock.storage = SharedPreferencesNtpStorage(this).cached()
+            NtpClock.syncTask()
         }
     }
 }
