@@ -15,13 +15,24 @@ repositories {
 }
 
 dependencies {
-    implementation 'de.musichin.ntpclock:ntpclock:x.y.z'
+    def version = 'x.y.z'
 
-    implementation 'de.musichin.ntpclock:ntpclock-date:x.y.z' // ktx for Date class
-    implementation 'de.musichin.ntpclock:ntpclock-calendar:x.y.z' // ktx for Calendar class
-    implementation 'de.musichin.ntpclock:ntpclock-time:x.y.z' // ktx for java.time.* classes
-    implementation 'de.musichin.ntpclock:ntpclock-threetenbp:x.y.z' // ktx for org.threeten.bp.* classes
-    implementation 'de.musichin.ntpclock:ntpclock-joda:x.y.z' // ktx for org.joda.time.*
+    implementation "de.musichin.ntpclock:ntpclock:x.$version"
+
+    // optional - ktx for Date class
+    implementation "de.musichin.ntpclock:ntpclock-date:$version"
+
+    // optional - ktx for Calendar class
+    implementation "de.musichin.ntpclock:ntpclock-calendar:$version"
+
+    // optional - ktx for java.time.* classes
+    implementation "de.musichin.ntpclock:ntpclock-time:$version"
+
+    // optional - ktx for org.threeten.bp.* classes
+    implementation "de.musichin.ntpclock:ntpclock-threetenbp:$version"
+
+    // optional - ktx for org.joda.time.* classes
+    implementation "de.musichin.ntpclock:ntpclock-joda:$version"
 }
 ```
 
