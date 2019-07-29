@@ -28,8 +28,8 @@ afterEvaluate {
 }
 
 dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
-    implementation 'androidx.annotation:annotation:1.1.0'
+    api "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    api 'androidx.annotation:annotation:1.1.0'
 
     androidTestImplementation 'androidx.test:runner:1.2.0'
     androidTestImplementation 'junit:junit:4.12'

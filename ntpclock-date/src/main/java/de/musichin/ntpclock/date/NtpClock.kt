@@ -1,5 +1,6 @@
-package de.musichin.ntpclock
+package de.musichin.ntpclock.date
 
+import de.musichin.ntpclock.NtpClock
 import java.util.Date
 
 fun NtpClock.date(): Date? = stampOrNull()?.date()

@@ -19,7 +19,9 @@ dependencies {
 
     implementation 'de.musichin.ntpclock:ntpclock-date:x.y.z' // ktx for `Date` class
     implementation 'de.musichin.ntpclock:ntpclock-calendar:x.y.z' // ktx for `Calendar` class
-    implementation 'de.musichin.ntpclock:ntpclock-time:x.y.z' // ktx for `java.time.*` classes
+    implementation 'de.musichin.ntpclock:ntpclock-time:x.y.z' // ktx for `java.time.*` classes (JSR-310)
+    implementation 'de.musichin.ntpclock:ntpclock-threetenbp:x.y.z' // ktx for `org.threeten.bp.*` classes (JSR-310)
+    implementation 'de.musichin.ntpclock:ntpclock-joda:x.y.z' // ktx for `org.joda.time.*`
 }
 ```
 

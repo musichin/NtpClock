@@ -1,12 +1,10 @@
-package de.musichin.ntpclock
+package de.musichin.ntpclock.threetenbp
 
-import android.os.Build
-import androidx.annotation.RequiresApi
-import java.time.Clock
-import java.time.Instant
-import java.time.ZoneId
+import de.musichin.ntpclock.NtpStamp
+import org.threeten.bp.Clock
+import org.threeten.bp.Instant
+import org.threeten.bp.ZoneId
 
-@RequiresApi(Build.VERSION_CODES.O)
 internal class RealtimeClock(
     private val zone: ZoneId,
     private val stamp: NtpStamp

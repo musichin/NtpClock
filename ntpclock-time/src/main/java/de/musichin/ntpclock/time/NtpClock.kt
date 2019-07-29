@@ -1,7 +1,8 @@
-package de.musichin.ntpclock
+package de.musichin.ntpclock.time
 
 import android.os.Build
 import androidx.annotation.RequiresApi
+import de.musichin.ntpclock.NtpClock
 import java.time.Instant
 
 @RequiresApi(Build.VERSION_CODES.O)

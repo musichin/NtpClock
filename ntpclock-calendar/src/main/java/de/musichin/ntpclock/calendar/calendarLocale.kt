@@ -1,4 +1,4 @@
-package de.musichin.ntpclock
+package de.musichin.ntpclock.calendar
 
 import android.os.Build
 import java.util.Locale

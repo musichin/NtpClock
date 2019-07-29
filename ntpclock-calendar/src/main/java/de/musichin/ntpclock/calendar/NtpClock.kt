@@ -1,5 +1,6 @@
-package de.musichin.ntpclock
+package de.musichin.ntpclock.calendar
 
+import de.musichin.ntpclock.NtpClock
 import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
@@ -15,16 +16,16 @@ fun NtpClock.calendarOrNull(
 ): Calendar? = stampOrNull()?.calendar(zone, locale)
 
 fun NtpClock.calendarOrDefault(
-        zone: TimeZone = TimeZone.getDefault(),
-        locale: Locale = calendarLocale(),
-        default: Calendar
+    zone: TimeZone = TimeZone.getDefault(),
+    locale: Locale = calendarLocale(),
+    default: Calendar
 ): Calendar = stampOrNull()?.calendar(zone, locale) ?: default
 
 fun NtpClock.calendarOrDefault(
-        zone: TimeZone = TimeZone.getDefault(),
-        locale: Locale = calendarLocale(),
-        default: () -> Calendar
-): Calendar = stampOrNull()?.calendar(zone, locale) ?: default()
+    zone: TimeZone = TimeZone.getDefault(),
+    locale: Locale = calendarLocale(),
+    default: (zone: TimeZone, locale: Locale) -> Calendar
+): Calendar = stampOrNull()?.calendar(zone, locale) ?: default(zone, locale)
 
 fun NtpClock.calendarOrSystemValue(
         zone: TimeZone = TimeZone.getDefault(),

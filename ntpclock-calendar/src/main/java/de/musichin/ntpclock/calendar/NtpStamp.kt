@@ -1,5 +1,6 @@
-package de.musichin.ntpclock
+package de.musichin.ntpclock.calendar
 
+import de.musichin.ntpclock.NtpStamp
 import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone

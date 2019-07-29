@@ -28,7 +28,8 @@ afterEvaluate {
 }
 
 dependencies {
-    api project(":ntpclock")
+    api project(':ntpclock')
+    api group: 'org.threeten', name: 'threetenbp', version: '1.4.0', classifier: 'no-tzdb'
 
     androidTestImplementation 'androidx.test:runner:1.2.0'
     androidTestImplementation 'junit:junit:4.12'
