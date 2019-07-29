@@ -1,13 +1,6 @@
 package de.musichin.ntpclock
 
-import android.os.Build
 import android.os.Handler
-import androidx.annotation.RequiresApi
-import java.time.Instant
-import java.util.Calendar
-import java.util.Date
-import java.util.Locale
-import java.util.TimeZone
 
 object NtpClock {
     private var runningTask: NtpSyncTask? = null

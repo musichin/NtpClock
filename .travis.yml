@@ -12,10 +12,16 @@ script:
     - |
       if [ -z "$TRAVIS_TAG" ]
       then
-        ./gradlew clean :ntpclock:build :ntpclock:bintrayUpload -PbintrayUser=$BINTRAY_USER -PbintrayKey=$BINTRAY_KEY -PdryRun=true
+        BINTRAY_DRY_RUN=true
       else
-        ./gradlew clean :ntpclock:build :ntpclock:bintrayUpload -PbintrayUser=$BINTRAY_USER -PbintrayKey=$BINTRAY_KEY -PdryRun=false
+        BINTRAY_DRY_RUN=false
       fi
+      ./gradlew clean :ntpclock:build :ntpclock:bintrayUpload -PbintrayUser=$BINTRAY_USER -PbintrayKey=$BINTRAY_KEY -PdryRun=$BINTRAY_DRY_RUN
+      ./gradlew clean :ntpclock-date:build :ntpclock-date:bintrayUpload -PbintrayUser=$BINTRAY_USER -PbintrayKey=$BINTRAY_KEY -PdryRun=$BINTRAY_DRY_RUN
+      ./gradlew clean :ntpclock-calendar:build :ntpclock-calendar:bintrayUpload -PbintrayUser=$BINTRAY_USER -PbintrayKey=$BINTRAY_KEY -PdryRun=$BINTRAY_DRY_RUN
+      ./gradlew clean :ntpclock-time:build :ntpclock-time:bintrayUpload -PbintrayUser=$BINTRAY_USER -PbintrayKey=$BINTRAY_KEY -PdryRun=$BINTRAY_DRY_RUN
+      ./gradlew clean :ntpclock-threetenbp:build :ntpclock-threetenbp:bintrayUpload -PbintrayUser=$BINTRAY_USER -PbintrayKey=$BINTRAY_KEY -PdryRun=$BINTRAY_DRY_RUN
+      ./gradlew clean :ntpclock-joda:build :ntpclock-joda:bintrayUpload -PbintrayUser=$BINTRAY_USER -PbintrayKey=$BINTRAY_KEY -PdryRun=$BINTRAY_DRY_RUN
 
 #after_success:
 #  - bash <(curl -s https://codecov.io/bash)
