@@ -1,9 +1,10 @@
-# NTP Clock [ ![Download](https://api.bintray.com/packages/musichin/maven/NtpClock/images/download.svg)](https://bintray.com/musichin/maven/NtpClock/_latestVersion) [![Kotlin](https://img.shields.io/badge/Kotlin-1.3.40-blue.svg)](http://kotlinlang.org) [![Build Status](https://travis-ci.org/musichin/NtpClock.svg?branch=master)](https://travis-ci.org/musichin/NtpClock)
+# NTP Clock [ ![Download](https://api.bintray.com/packages/musichin/maven/NtpClock/images/download.svg)](https://bintray.com/musichin/maven/NtpClock/_latestVersion) [![Kotlin](https://img.shields.io/badge/Kotlin-1.3.41-blue.svg)](http://kotlinlang.org) [![Build Status](https://travis-ci.org/musichin/NtpClock.svg?branch=master)](https://travis-ci.org/musichin/NtpClock)
 
 ## Usage
 ```kotlin
 NtpClock.sync().onSuccess { stamp ->
     println(stamp.millis()) // milliseconds from the epoch of 1970-01-01T00:00:00Z.
+    println(stamp.offset()) // offset to system time in millis.
 }
 ```
 
@@ -15,6 +16,10 @@ repositories {
 
 dependencies {
     implementation 'de.musichin.ntpclock:ntpclock:x.y.z'
+
+    implementation 'de.musichin.ntpclock:ntpclock-date:x.y.z' // ktx for `Date` class
+    implementation 'de.musichin.ntpclock:ntpclock-calendar:x.y.z' // ktx for `Calendar` class
+    implementation 'de.musichin.ntpclock:ntpclock-time:x.y.z' // ktx for `java.time.*` classes
 }
 ```
 

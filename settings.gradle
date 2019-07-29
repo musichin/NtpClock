@@ -1,1 +1,1 @@
-include ':ntpclock', ':app'
+include ':ntpclock', ':ntpclock-time', ':ntpclock-date', ':ntpclock-calendar', ':app'

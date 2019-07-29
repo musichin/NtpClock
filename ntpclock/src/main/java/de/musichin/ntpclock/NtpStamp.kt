@@ -1,19 +1,9 @@
 package de.musichin.ntpclock
 
-import android.os.Build
 import android.os.Parcel
 import android.os.Parcelable
 import android.os.SystemClock
-import androidx.annotation.RequiresApi
 import java.io.Serializable
-import java.time.Clock
-import java.time.Instant
-import java.time.ZoneId
-import java.time.ZoneOffset
-import java.util.Calendar
-import java.util.Date
-import java.util.Locale
-import java.util.TimeZone
 
 data class NtpStamp(
     val pool: String,
@@ -50,34 +40,5 @@ data class NtpStamp(
 
     fun millis(): Long = millisAt(SystemClock.elapsedRealtime())
 
-    fun date(): Date = Date(time)
-
-    @JvmOverloads
-    fun calendar(
-        zone: TimeZone = TimeZone.getDefault(),
-        locale: Locale =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) Locale.getDefault(Locale.Category.FORMAT)
-            else Locale.getDefault()
-    ): Calendar = Calendar.getInstance(zone, locale).apply { timeInMillis = millis() }
-
-    @RequiresApi(Build.VERSION_CODES.O)
-    fun instant(): Instant = Instant.ofEpochMilli(time)
-
-    @RequiresApi(Build.VERSION_CODES.O)
-    fun clock(zone: ZoneId): Clock = RealtimeClock(zone, this)
-
-    @RequiresApi(Build.VERSION_CODES.O)
-    fun clockUTC(): Clock = RealtimeClock(ZoneOffset.UTC, this)
-
-    @RequiresApi(Build.VERSION_CODES.O)
-    fun clockDefaultZone(): Clock = RealtimeClock(ZoneId.systemDefault(), this)
-
     fun millisAt(elapsedRealtime: Long): Long = this.time + (elapsedRealtime - this.elapsedRealtime)
-
-    //
-//    fun atDate(realtime: Long): Date = Date(stamp().calculateAt(realtime))
-//
-//    @RequiresApi(Build.VERSION_CODES.O)
-//    fun atInstant(realtime: Long): Instant = Instant.ofEpochMilli(stamp().calculateAt(realtime))
-
 }
