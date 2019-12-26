@@ -1,22 +1,20 @@
 package de.musichin.ntpclock
 
 import android.os.SystemClock
+import de.musichin.ntpclock.NtpResponse.Companion.VERSION_3
+import de.musichin.ntpclock.NtpResponse.Companion.VERSION_4
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.concurrent.Executor
+import kotlin.math.roundToLong
 
 object NtpClient {
-    private const val NTP_PORT = 123
-    private const val NTP_TIMEOUT = 15_000
     private const val NTP_PACKET_SIZE = 48
 
-    private const val VERSION_3 = 3
-    private const val VERSION_4 = 4
     private const val MODE_CLIENT = 3
-
-    private const val DEFAULT_SAMPLES = 4
 
     private const val MSB_0_BASE = 2085978496000L
     private const val MSB_1_BASE = -2208988800000L
@@ -35,7 +33,7 @@ object NtpClient {
     private fun Long.fromNtpTime(): Long {
         val seconds = (this ushr 32) and 0xffffffffL
         val fraction = this and 0xffffffffL
-        val millis = Math.round(1000.0 * fraction / 0x100000000L)
+        val millis = (1000.0 * fraction / 0x100000000L).roundToLong()
 
         val msb = seconds and 0x80000000L
         val base = if (msb == 0L) MSB_0_BASE else MSB_1_BASE
@@ -46,11 +44,66 @@ object NtpClient {
     @JvmStatic
     fun request(
         address: InetAddress,
-        port: Int = NTP_PORT,
-        version: Int = VERSION_3,
-        samples: Int = DEFAULT_SAMPLES,
-        timeout: Int = NTP_TIMEOUT,
-        onResponse: (NtpResponse) -> Unit
+        port: Int = Defaults.PORT,
+        version: Int = Defaults.VERSION,
+        samples: Int = Defaults.SAMPLES,
+        timeout: Int = Defaults.TIMEOUT,
+        executor: Executor,
+        onNext: (NtpResponse) -> Unit,
+        onDone: () -> Unit,
+        onError: (Exception) -> Unit
+    ) {
+        request(address, port, version, samples, timeout, executor::execute, onNext, onDone, onError)
+    }
+
+    @JvmOverloads
+    @JvmStatic
+    fun request(
+        address: InetAddress,
+        port: Int = Defaults.PORT,
+        version: Int = Defaults.VERSION,
+        samples: Int = Defaults.SAMPLES,
+        timeout: Int = Defaults.TIMEOUT,
+        executor: (() -> Unit) -> Unit,
+        onNext: (NtpResponse) -> Unit,
+        onDone: () -> Unit,
+        onError: (Exception) -> Unit
+    ) {
+        executor {
+            request(address, port, version, samples, timeout, onNext, onDone, onError)
+        }
+    }
+
+    @JvmOverloads
+    @JvmStatic
+    fun request(
+        address: InetAddress,
+        port: Int = Defaults.PORT,
+        version: Int = Defaults.VERSION,
+        samples: Int = Defaults.SAMPLES,
+        timeout: Int = Defaults.TIMEOUT,
+        onNext: (NtpResponse) -> Unit,
+        onDone: () -> Unit,
+        onError: (Exception) -> Unit
+    ) {
+        try {
+            request(address, port, version, samples, timeout, onNext)
+        } catch (cause: Exception) {
+            return onError(cause)
+        }
+
+        onDone()
+    }
+
+    @JvmOverloads
+    @JvmStatic
+    fun request(
+        address: InetAddress,
+        port: Int = Defaults.PORT,
+        version: Int = Defaults.VERSION,
+        samples: Int = Defaults.SAMPLES,
+        timeout: Int = Defaults.TIMEOUT,
+        onNext: (NtpResponse) -> Unit
     ) {
         if (version != VERSION_3 && version != VERSION_4)
             throw IllegalArgumentException("Version $version is unsupported")
@@ -114,7 +167,7 @@ object NtpClient {
                     destinationTs,
                     completed
                 )
-                onResponse(response)
+                onNext(response)
             }
         }
     }
@@ -123,10 +176,10 @@ object NtpClient {
     @JvmStatic
     fun request(
         address: InetAddress,
-        port: Int = NTP_PORT,
-        version: Int = VERSION_3,
-        samples: Int = DEFAULT_SAMPLES,
-        timeout: Int = NTP_TIMEOUT
+        port: Int = Defaults.PORT,
+        version: Int = Defaults.VERSION,
+        samples: Int = Defaults.SAMPLES,
+        timeout: Int = Defaults.TIMEOUT
     ): List<NtpResponse> {
         val results = mutableListOf<NtpResponse>()
         request(address, port, version, samples, timeout) {

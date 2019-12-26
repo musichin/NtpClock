@@ -9,6 +9,7 @@ import java.util.concurrent.TimeUnit
 
 class NtpSyncTask private constructor(
     private val pool: String,
+    private val port: Int,
     private val version: Int,
     private val servers: Int,
     private val samples: Int,
@@ -19,27 +20,29 @@ class NtpSyncTask private constructor(
         @JvmOverloads
         @JvmStatic
         fun sync(
-            pool: String = "pool.ntp.org",
-            version: Int = 3,
-            servers: Int = 4,
-            samples: Int = 4,
-            timeout: Int = 15_000
+            pool: String = Defaults.POOL,
+            port: Int = Defaults.PORT,
+            version: Int = Defaults.VERSION,
+            servers: Int = Defaults.SERVERS,
+            samples: Int = Defaults.SAMPLES,
+            timeout: Int = Defaults.TIMEOUT
         ): NtpSyncTask {
             val executor = Executors.newFixedThreadPool(servers)
 
-            return sync(pool, version, servers, samples, timeout, executor).onComplete { _, _ -> executor.shutdown() }
+            return sync(pool, port, version, servers, samples, timeout, executor).onComplete { _, _ -> executor.shutdown() }
         }
 
         @JvmOverloads
         @JvmStatic
         fun sync(
-            pool: String,
-            version: Int = 3,
-            servers: Int = 4,
-            samples: Int = 4,
-            timeout: Int = 15_000,
+            pool: String = Defaults.POOL,
+            port: Int = Defaults.PORT,
+            version: Int = Defaults.VERSION,
+            servers: Int = Defaults.SERVERS,
+            samples: Int = Defaults.SAMPLES,
+            timeout: Int = Defaults.TIMEOUT,
             executor: Executor
-        ) = NtpSyncTask(pool, version, servers, samples, timeout) { executor.execute(it) }
+        ) = NtpSyncTask(pool, port, version, servers, samples, timeout) { executor.execute(it) }
 
 
         private fun NtpResponse.isCandidate(): Boolean {
@@ -50,8 +53,7 @@ class NtpSyncTask private constructor(
 
         private fun List<NtpResponse>.calculateStamp(pool: String): NtpStamp? {
             return filter { it.isCandidate() }
-                .sortedBy { it.transmissionDelay }
-                .firstOrNull()
+                .minBy { it.transmissionDelay }
                 ?.let {
                     NtpStamp(
                         pool,
@@ -148,21 +150,7 @@ class NtpSyncTask private constructor(
         next: (NtpResponse) -> Unit,
         done: () -> Unit,
         error: (Exception) -> Unit
-    ) = executor {
-        try {
-            NtpClient.request(
-                address = address,
-                version = version,
-                samples = samples,
-                timeout = timeout,
-                onResponse = next
-            )
-        } catch (cause: Exception) {
-            return@executor error(cause)
-        }
-
-        done()
-    }
+    ) = NtpClient.request(address, port, version, samples, timeout, executor, next, done, error)
 
     private fun calculateStamp(): NtpStamp? =
         results.values.fold(emptyList<NtpResponse>()) { acc, res -> acc.plus(res) }.calculateStamp(pool)
